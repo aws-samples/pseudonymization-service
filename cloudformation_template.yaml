@@ -1,0 +1,159 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Serverless Specification template describing your function.
+Parameters:
+  Stage:
+    Type: String
+    Default: Dev
+  CacheSize:
+    Type: Number
+    Default: 40000
+  SecretCacheSize:
+    Type: Number
+    Default: 4000
+Resources:
+#----------------------------------API-----------------------------------
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      OpenApiVersion: '3.0.1'
+      StageName: !Ref Stage
+      EndpointConfiguration:
+        Type: REGIONAL
+      DefinitionBody:
+        Fn::Transform:
+          Name: "AWS::Include"
+          Parameters:
+            Location: "./api-spec.yaml"
+      Auth:
+        ApiKeyRequired: true
+        UsagePlan:
+          CreateUsagePlan: PER_API
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiGwCwLogGroup.Arn
+        Format: '{"RequestId":"$context.requestId", "RequestTime":"$context.requestTime", "RequesterIp":"$context.identity.sourceIp", "PrincipalId":"$context.authorizer.principalId", "HttpMethod":"$context.httpMethod", "Resource":"$context.path", "AuthorizationStatusCode":"$context.authorize.status","ResponseStatusCode":"$context.integration.status", "ErrorMsg":"$context.authorizer.errorMessage"}'
+#----------------------------------CWL-----------------------------------
+  ApiGwCwLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      LogGroupName: !Sub "apigw-${AWS::StackName}"
+      RetentionInDays: 90
+#----------------------------Lambda Functions----------------------------
+  LambdaFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: com.amazonaws.samples.entrypoints.ServiceHandler
+      Runtime: java11
+      CodeUri: ./target/pseudonymization-service-1.0-SNAPSHOT.jar
+      Description: 'Lambda function that hosts the psedonymization/re-identification logic'
+      MemorySize: 1024
+      Timeout: 60
+      Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          CACHE_SIZE: !Ref CacheSize
+          KmsKeyArn: !GetAtt 'KmsKeyId.Arn'
+          SECRET_CACHE_SIZE: !Ref SecretCacheSize
+          SECRET_ARN: !Sub "EncryptionKeys-${AWS::StackName}"
+          SECRET_REGION: !Sub ${AWS::Region}
+#--------------------------------lambdaApiGatewayInvoke-----------------------------------
+  lambdaApiGatewayPseudonymInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/POST/pseudonymization
+  lambdaApiGatewayReidentifyInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/POST/reidentification
+#--------------------------------Roles-----------------------------------
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref LambdaCWPermissionsPolicy
+        - !Ref LambdaEncryptionPermissionsPolicy
+#-------------------------------Policies---------------------------------
+  LambdaCWPermissionsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'logs:DescribeLogStreams'
+              - 'logs:GetLogEvents'
+              - 'logs:CreateLogGroup'
+            Resource:
+              - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
+  LambdaEncryptionPermissionsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - 
+            Effect: Allow
+            Action:
+              - 'secretsmanager:GetSecretValue'
+              - 'secretsmanager:DescribeSecret'
+              - 'secretsmanager:ListSecretVersionIds'
+              - 'secretsmanager:TagResource'
+              - 'secretsmanager:UntagResource'
+            Resource: !Ref EncryptionKeys
+          - 
+            Effect: Allow
+            Action:
+              - 'kms:DescribeKey'
+              - 'kms:Decrypt'
+            Resource: !GetAtt 'KmsKeyId.Arn'
+#----------------------------SecretManager--------------------------------
+  EncryptionKeys:
+    Type: "AWS::SecretsManager::Secret"
+    Properties:
+      KmsKeyId: !Ref KmsKeyId
+      Name: !Sub "EncryptionKeys-${AWS::StackName}"
+#--------------------------------KMS-------------------------------------
+  KmsKeyId: 
+    Type: AWS::KMS::Key
+    Properties: 
+      Enabled: true
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: default
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+      KeySpec: SYMMETRIC_DEFAULT
+ #------------------------------Outputs-----------------------------------     
+Outputs:
+  PseudonymizationUrl:
+    Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/pseudonymization"
+  ReidentificationUrl:
+    Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/reidentification"
+  KmsKeyArn:
+    Value: !GetAtt 'KmsKeyId.Arn'
+  SecretName: 
+    Value: !Sub "EncryptionKeys-${AWS::StackName}"
