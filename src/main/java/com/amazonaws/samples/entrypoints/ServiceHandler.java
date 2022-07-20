@@ -23,21 +23,6 @@ import java.util.logging.Logger;
 import java.util.Base64;
 import java.util.Optional;
 
-//Request Body Example
-
-//{
-//        "identifiers": ["sample1","sample2","sample3"]
-//}
-
-//{
-//        "pseudonyms": [
-//        "YTlkNjc0NmM2NTg13ktvBXOqZCMtcelv+TLdiyChQOjSTIk=",
-//        "YzE1YWNlN2NjYTY4COrM3fY7RXOXpFWOG82ry06x2soR/x4=",
-//        "ZTQwMDVjMTNjMGM4FmPz+AtaocF1uKWmluaGRD+uwyJV2Fc="
-//        ]
-//        }
-
-
 public class ServiceHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
     private static final Logger log = Logger.getLogger("ServiceHandler.class");
 
