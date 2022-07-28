@@ -2,9 +2,8 @@
 
 ### chmod +x deploy.sh 
 SOURCE_TEMPLATE="cloudformation_template.yaml"
-OUTPUT_TEMPLATE="output.yaml"
 
-DEPENDENCIES=(mvn aws)
+DEPENDENCIES=(mvn aws sam)
 declare -i var OPTIONS_FOUND
 OPTIONS_FOUND=0
 
@@ -68,25 +67,10 @@ fi
 #1. Build JAR
 mvn clean package
 
-#2. Build SAM
-aws cloudformation package --template-file ${SOURCE_TEMPLATE} \
-     --s3-bucket ${ARTEFACT_S3_BUCKET} \
-     --output-template-file ${OUTPUT_TEMPLATE} \
-     --profile ${AWS_PROFILE} \
-     --region ${AWS_REGION} &> /dev/null
-
-if [ ! -f ${OUTPUT_TEMPLATE} ];then
-     echo "Error while generating the stack template"
-     exit 1
-fi
-
-#2. Deploy the CloudFormation Stack to the configured AWS Account from the generated template
-
-aws cloudformation deploy --template-file ${OUTPUT_TEMPLATE} \
-     --capabilities CAPABILITY_IAM \
-     --stack-name ${STACK_NAME} \
-     --region ${AWS_REGION}
-
-aws cloudformation  describe-stacks --stack-name ${STACK_NAME} \
-     --query "Stacks[0].Outputs" --output table \
-     --region ${AWS_REGION}
+# #2. SAM deployment
+sam deploy -t ${SOURCE_TEMPLATE} \
+      --stack-name ${STACK_NAME} \
+      --s3-bucket ${ARTEFACT_S3_BUCKET} \
+      --capabilities CAPABILITY_IAM \
+      --region ${AWS_REGION} \
+      --profile ${AWS_PROFILE}

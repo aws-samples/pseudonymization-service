@@ -60,4 +60,4 @@ else
   exit 1   
 fi
 
-aws cloudformation delete-stack --stack-name ${STACK_NAME} --profile ${AWS_PROFILE} --region ${AWS_REGION}
+sam delete --stack-name ${STACK_NAME} --profile ${AWS_PROFILE} --region ${AWS_REGION}

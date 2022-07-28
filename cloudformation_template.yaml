@@ -13,6 +13,10 @@ Parameters:
     Default: 4000
 Resources:
 #----------------------------------API-----------------------------------
+  ApiGwSetting:
+    Type: AWS::ApiGateway::Account
+    Properties: 
+      CloudWatchRoleArn: !GetAtt ApiRole.Arn
   RestApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -87,6 +91,20 @@ Resources:
       ManagedPolicyArns:
         - !Ref LambdaCWPermissionsPolicy
         - !Ref LambdaEncryptionPermissionsPolicy
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref ApiCWPermissionsPolicy
 #-------------------------------Policies---------------------------------
   LambdaCWPermissionsPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -124,6 +142,23 @@ Resources:
               - 'kms:DescribeKey'
               - 'kms:Decrypt'
             Resource: !GetAtt 'KmsKeyId.Arn'
+  ApiCWPermissionsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'logs:DescribeLogStreams'
+              - 'logs:GetLogEvents'
+              - 'logs:CreateLogGroup'
+              - 'logs:DescribeLogGroups'
+              - 'logs:FilterLogEvents'
+            Resource:
+              - '*'
 #----------------------------SecretManager--------------------------------
   EncryptionKeys:
     Type: "AWS::SecretsManager::Secret"
