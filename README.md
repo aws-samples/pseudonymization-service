@@ -68,6 +68,7 @@ python ./helper_scripts/key_generator.py \
 You may test the solution via postman. In the test folder you can find the postman collection json file with all the necessary configurations to call the REST endpoints. Once imported make sure to fill the variables in the collection. All values will be outputted from `./deployment_scripts/deploy.sh`, except for the API_KEY which you have to fetch from the API Gateway console and the deterministic one which it's up to you to set it to `True` or `False`.
 
 ## Prerequisites
+- [AWS SAM](https://aws.amazon.com/serverless/sam/)
 - [Java JDK](https://www.oracle.com/java/technologies/downloads/)
 - [Apache Maven](https://maven.apache.org/)
 - [AWS CLI](https://aws.amazon.com/cli/)
