@@ -5,7 +5,7 @@ with data privacy regulations like Europe's [General Data Protection Regulation]
 
 
 ## Blogpost URL
-[How to build pseudonymization service on AWS to protect sensitive data](link)
+[Part 1: Build a pseudonymization service on AWS to protect sensitive data](https://aws.amazon.com/blogs/big-data/part-1-build-a-pseudonymization-service-on-aws-to-protect-sensitive-data/)
 
 
 ## Solution Overview
