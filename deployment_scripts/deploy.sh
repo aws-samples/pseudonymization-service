@@ -12,7 +12,7 @@ while getopts ":s:b:p:r:" opt; do
   case $opt in
     s) STACK_NAME="$OPTARG" OPTIONS_FOUND+=1
     ;;
-    b) ARTEFACT_S3_BUCKET="$OPTARG" OPTIONS_FOUND+=1
+    b) ARTIFACT_S3_BUCKET="$OPTARG" OPTIONS_FOUND+=1
     ;;
     p) AWS_PROFILE="$OPTARG" OPTIONS_FOUND+=1
     ;;
@@ -70,7 +70,7 @@ mvn clean package
 # #2. SAM deployment
 sam deploy -t ${SOURCE_TEMPLATE} \
       --stack-name ${STACK_NAME} \
-      --s3-bucket ${ARTEFACT_S3_BUCKET} \
+      --s3-bucket ${ARTIFACT_S3_BUCKET} \
       --capabilities CAPABILITY_IAM \
       --region ${AWS_REGION} \
       --profile ${AWS_PROFILE}
